@@ -2,456 +2,462 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta charset="UTF-8">
-  <title>OMIOR — Order Scanner</title>
+  <title>OMIOR QR Scanner</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --accent: #5fcf5f;
-      --accent-dim: #0d2b0d;
-      --accent-border: #1e4d1e;
-    }
-    body.mode-delivered {
-      --accent: #cf5f5f;
-      --accent-dim: #2b0d0d;
-      --accent-border: #4d1e1e;
-    }
-
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: sans-serif;
       background: #0f0f0f;
       color: #fff;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 28px 16px 40px;
-      transition: background 0.2s;
+      padding: 24px 16px 60px;
     }
+    h2 { font-size: 15px; font-weight: 500; color: #aaa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+    p.sub { font-size: 13px; color: #555; margin-bottom: 16px; text-align: center; line-height: 1.6; }
 
-    .logo    { font-size: 22px; font-weight: 700; letter-spacing: 3px; color: #fff; margin-bottom: 4px; }
-    .tagline { font-size: 12px; color: #444; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 20px; }
-
-    /* ── TABS ── */
-    #tabs {
-      width: 100%; max-width: 340px;
-      display: flex; gap: 8px;
-      background: #1a1a1a; border-radius: 14px;
-      padding: 5px; margin-bottom: 20px;
-    }
-    .tab-btn {
-      flex: 1; padding: 12px 8px;
-      border: none; border-radius: 10px;
-      font-size: 14px; font-weight: 700;
-      cursor: pointer; background: transparent;
-      color: #666; letter-spacing: 0.5px;
-      transition: all 0.2s;
-    }
-    .tab-btn.active.ready    { background: #0d2b0d; color: #5fcf5f; }
-    .tab-btn.active.delivered{ background: #2b0d0d; color: #cf5f5f; }
+    .wrap { width: 100%; max-width: 320px; }
 
     .btn {
-      padding: 18px 16px; border-radius: 14px;
-      font-size: 16px; font-weight: 600; cursor: pointer;
-      width: 100%; max-width: 340px; text-align: center;
-      margin-bottom: 12px; display: block; border: 1px solid var(--accent-border);
-      background: var(--accent-dim); color: var(--accent);
-      transition: opacity 0.15s, background 0.2s, color 0.2s, border-color 0.2s;
+      padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 500;
+      cursor: pointer; width: 100%; text-align: center; margin-bottom: 10px;
+      display: block; border: none;
     }
-    .btn:active { opacity: 0.7; }
-    .btn-stop { background: #2b0d0d; color: #cf5f5f; border-color: #4d1e1e; }
+    .btn-green { background: #1a3a1a; color: #6fcf6f; border: 1px solid #2d5a2d; }
+    .btn-blue  { background: #1a1a3a; color: #6f9fcf; border: 1px solid #2d2d5a; }
+    .btn-red   { background: #3a1a1a; color: #cf6f6f; border: 1px solid #5a2d2d; }
+    .btn-amber { background: #3a2f1a; color: #cfa76f; border: 1px solid #5a4a2d; }
+    .btn:disabled { opacity: 0.4; cursor: default; }
 
     label.btn { text-decoration: none; }
     #qr-input { display: none; }
 
-    /* ── CAMERA ── */
     #camera-wrap {
-      width: 100%; max-width: 340px;
-      margin-bottom: 12px; display: none;
-      position: relative; border-radius: 16px;
-      overflow: hidden; border: 2px solid var(--accent-border);
-      transition: border-color 0.2s;
+      width: 100%; margin-bottom: 10px; display: none; position: relative;
+      border-radius: 12px; overflow: hidden; border: 2px solid #2d5a2d;
     }
-    video { width: 100%; display: block; background: #111; }
-
+    video { width: 100%; border-radius: 12px; display: block; background: #111; }
     #scan-line {
       position: absolute; left: 5%; width: 90%; height: 2px;
-      background: var(--accent); pointer-events: none;
-      box-shadow: 0 0 10px var(--accent);
-      animation: scan 1.4s ease-in-out infinite;
+      background: #6fcf6f; pointer-events: none; box-shadow: 0 0 8px #6fcf6f;
+      animation: scan 2s linear infinite;
     }
-    @keyframes scan { 0%{top:8%} 50%{top:88%} 100%{top:8%} }
-
-    /* Brief flash confirmation instead of blocking overlay */
-    #flash-overlay {
-      position: absolute; inset: 0;
-      background: var(--accent-dim);
-      opacity: 0; pointer-events: none;
-      display: flex; align-items: center; justify-content: center;
-      transition: opacity 0.15s;
-    }
-    #flash-overlay.show { opacity: 0.85; }
-    #flash-overlay .ford {
-      font-size: 28px; font-weight: 800; color: var(--accent);
-    }
-
-    #camera-wrap::before, #camera-wrap::after, .corner-br, .corner-bl {
-      content: ''; position: absolute; width: 24px; height: 24px;
-      border-color: var(--accent); border-style: solid; z-index: 3;
-    }
-    #camera-wrap::before { top:10px; left:10px;  border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
-    #camera-wrap::after  { top:10px; right:10px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
-    .corner-br { bottom:10px; right:10px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
-    .corner-bl { bottom:10px; left:10px;  border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
-
+    @keyframes scan { 0%{top:10%} 50%{top:85%} 100%{top:10%} }
     canvas { display: none; }
 
-    /* ── STATUS ── */
+    /* corner brackets for camera view */
+    #camera-wrap::before, #camera-wrap::after, .corner-br, .corner-bl {
+      content: ''; position: absolute; width: 22px; height: 22px;
+      border-color: #6fcf6f; border-style: solid; z-index: 3;
+    }
+    #camera-wrap::before { top:8px; left:8px;  border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+    #camera-wrap::after  { top:8px; right:8px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+    .corner-br { bottom:8px; right:8px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+    .corner-bl { bottom:8px; left:8px;  border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+
+    /* flash confirmation on successful scan */
+    #flash-overlay {
+      position: absolute; inset: 0;
+      background: #1a3a1a;
+      opacity: 0; pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.15s; z-index: 2;
+    }
+    #flash-overlay.show { opacity: 0.85; }
+    #flash-overlay.invalid { background: #3a1a1a; }
+    #flash-overlay .ford { font-size: 26px; font-weight: 800; color: #6fcf6f; }
+    #flash-overlay.invalid .ford { color: #cf6f6f; }
+
+    #preview-wrap { width: 100%; margin-bottom: 10px; display: none; }
+    #preview { width: 100%; border-radius: 12px; display: block; }
+
     #status-box {
-      width: 100%; max-width: 340px;
-      padding: 14px; border-radius: 12px;
-      font-size: 13px; font-weight: 500;
-      text-align: center; display: none;
-      margin-bottom: 12px; line-height: 1.5;
+      width: 100%; padding: 12px 16px; border-radius: 10px;
+      font-size: 13px; font-weight: 500; text-align: center; display: none;
+      margin-bottom: 10px; line-height: 1.5;
     }
-    #status-box.success { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-border); display: block; }
-    #status-box.error   { background: #2b0d0d; color: #cf5f5f; border: 1px solid #4d1e1e; display: block; }
-    #status-box.loading { background: #0d0d2b; color: #5f8fcf; border: 1px solid #1e1e4d; display: block; }
+    #status-box.success { background: #1a3a1a; color: #6fcf6f; border: 1px solid #2d5a2d; display: block; }
+    #status-box.error   { background: #3a1a1a; color: #cf6f6f; border: 1px solid #5a2d2d; display: block; }
+    #status-box.loading { background: #1a1a3a; color: #6f9fcf; border: 1px solid #2d2d5a; display: block; }
 
-    /* ── COUNTERS ── */
-    #counter-wrap {
-      width: 100%; max-width: 340px;
-      display: flex; gap: 8px; margin-bottom: 16px;
+    /* queue */
+    #queue-header {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin: 6px 0 8px; font-size: 11px; color: #555; letter-spacing: 1px; text-transform: uppercase;
     }
-    .counter-box {
-      flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a;
-      border-radius: 10px; padding: 10px; text-align: center;
+    #queue-count { color: #ddd; font-weight: 700; font-size: 13px; letter-spacing: 0; text-transform: none; }
+    #queue { width: 100%; margin-bottom: 10px; }
+    .q-item {
+      display: flex; align-items: center; gap: 8px;
+      background: #161616; border: 1px solid #2a2a2a;
+      border-radius: 8px; padding: 8px 10px; margin-bottom: 6px;
     }
-    .counter-box .num { font-size: 22px; font-weight: 700; color: var(--accent); }
-    .counter-box .lbl { font-size: 10px; color: #555; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+    .q-item.invalid { border-color: #5a2d2d; background: #201414; }
+    .q-info { flex: 1; min-width: 0; }
+    .q-oid { color: #fff; font-weight: 500; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .q-meta { color: #666; font-size: 10px; margin-top: 2px; }
+    .q-meta.bad { color: #cf6f6f; }
+    .q-qty {
+      width: 46px; background: #0f0f0f; border: 1px solid #333; color: #fff;
+      border-radius: 6px; padding: 6px 4px; text-align: center; font-size: 13px;
+    }
+    .q-del { color: #666; font-size: 16px; cursor: pointer; padding: 0 4px; }
 
-    /* ── QUEUE / LOG ── */
-    #log-title {
-      font-size: 11px; color: #444; letter-spacing: 1px;
-      text-transform: uppercase; width: 100%; max-width: 340px;
-      margin-bottom: 8px; display: flex; justify-content: space-between;
-    }
-    #log { width: 100%; max-width: 340px; }
+    #sync-bar { display: flex; gap: 8px; }
+    #sync-bar .btn { margin-bottom: 0; }
+
+    #log-title { font-size: 11px; color: #444; letter-spacing: 1px; text-transform: uppercase; width: 100%; margin: 16px 0 8px; }
+    #log { width: 100%; }
     .log-item {
       display: flex; justify-content: space-between; align-items: center;
-      border-radius: 10px; padding: 11px 14px; margin-bottom: 6px;
       background: #1a1a1a; border: 1px solid #2a2a2a;
-      transition: border-color 0.3s;
+      border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;
     }
-    .log-item.pending { border-color: #2a2a55; }
-    .log-item.done     { border-color: var(--accent-border); }
-    .log-item.failed    { border-color: #4d1e1e; }
-    .log-item .oid  { color: #fff; font-weight: 600; font-size: 15px; }
-    .log-item .meta { color: #555; font-size: 11px; text-align: right; line-height: 1.6; }
-    .badge {
-      font-size: 10px; padding: 2px 7px; border-radius: 20px;
-      font-weight: 600; margin-top: 3px; display: inline-block;
-    }
-    .badge-pending { background: #1e1e4d; color: #5f8fcf; }
-    .badge-done    { background: var(--accent-dim); color: var(--accent); }
-    .badge-error   { background: #4d1e1e; color: #cf5f5f; }
-    .retry-link { font-size: 10px; color: #888; text-decoration: underline; cursor: pointer; margin-left: 6px; }
+    .log-item .oid { color: #fff; font-weight: 500; font-size: 13px; }
+    .log-item .meta { color: #555; font-size: 11px; }
   </style>
 </head>
-<body class="mode-ready">
+<body>
 
-  <!-- ════════════════════════════════════════════
-       PASTE YOUR GAS URL BELOW (between the quotes)
-  ════════════════════════════════════════════ -->
-  <script>
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzoM7i9EeFJPv3YHTPsxy1qr7Tt1IFoK5ocg8EXBY2P-cs_PAMXhlfuP7Pc65CA4m32/exec';
-  </script>
+  <h2>OMIOR — Scanner</h2>
+  <p class="sub">Scan order label QR code · queues locally · syncs in bulk</p>
 
-  <div class="logo">OMIOR</div>
-  <div class="tagline">Order Scanner</div>
+  <div class="wrap">
 
-  <div id="tabs">
-    <button class="tab-btn active ready" id="tab-ready" onclick="switchMode('ready')">✅ MARK READY</button>
-    <button class="tab-btn delivered" id="tab-delivered" onclick="switchMode('delivered')">🚚 MARK DELIVERED</button>
-  </div>
+    <button class="btn btn-green" onclick="startLive()">📷 Live Camera Scan</button>
+    <button id="stop-btn" class="btn btn-red" onclick="stopLive()" style="display:none">⏹ Stop Camera</button>
 
-  <div id="counter-wrap">
-    <div class="counter-box">
-      <div class="num" id="count-today">0</div>
-      <div class="lbl">Today</div>
+    <label class="btn btn-blue" for="qr-input">🖼️ Take Photo of Label</label>
+    <input type="file" id="qr-input" accept="image/*" capture="environment" onchange="handleImage(event)">
+
+    <div id="camera-wrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <div id="scan-line"></div>
+      <div class="corner-br"></div>
+      <div class="corner-bl"></div>
+      <div id="flash-overlay"><div class="ford" id="flash-order">—</div></div>
     </div>
-    <div class="counter-box">
-      <div class="num" id="count-session">0</div>
-      <div class="lbl">Session</div>
+
+    <div id="preview-wrap"><img id="preview"></div>
+    <div id="status-box"></div>
+
+    <div id="queue-header">
+      <span>Queued locally</span>
+      <span id="queue-count">0 / 100</span>
     </div>
-    <div class="counter-box">
-      <div class="num" id="count-pending">0</div>
-      <div class="lbl">Uploading</div>
+    <div id="queue"></div>
+
+    <div id="sync-bar">
+      <button class="btn btn-amber" id="sync-btn" onclick="syncBatch()">⬆ Sync Now</button>
+      <button class="btn btn-red" id="clear-btn" onclick="clearQueue()" style="max-width:110px">Clear</button>
     </div>
+
+    <div id="log-title">Synced this session</div>
+    <div id="log"></div>
+
   </div>
-
-  <button class="btn" id="start-btn" onclick="startLive()">📷 Live Camera Scan</button>
-  <button class="btn btn-stop" id="stop-btn" onclick="stopLive()" style="display:none">⏹ Stop Camera</button>
-
-  <label class="btn" for="qr-input">🖼️ Scan from Photo</label>
-  <input type="file" id="qr-input" accept="image/*" capture="environment" onchange="handleImage(event)">
-
-  <div id="camera-wrap">
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="canvas"></canvas>
-    <div id="scan-line"></div>
-    <div class="corner-br"></div>
-    <div class="corner-bl"></div>
-    <div id="flash-overlay"><div class="ford" id="flash-order">—</div></div>
-  </div>
-
-  <div id="status-box"></div>
-
-  <div id="log-title"><span>Scan Queue</span><span id="mode-label">READY</span></div>
-  <div id="log"></div>
 
 <script>
-  // ── STATE ──
-  var currentMode  = 'ready'; // 'ready' or 'delivered'
-  var liveStream   = null;
+  // ============================================================
+  // ⚠️ SET THIS after deploying code.gs as a Web App (Deploy > New
+  // deployment > Web app > Execute as: Me, Who has access: Anyone)
+  // Paste the /exec URL below.
+  // ============================================================
+  var WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxuOYtPC5a4dMDZPxwQgLvHsfC49CI-eZ0g6-4xONd29rTlwPqvdbcVFm_Op_x_2MHMuQ/exec';
+
+  var BATCH_LIMIT = 100;
+  var mode = 'ready'; // fixed internally — no user-facing ready/delivered toggle for this project
+  var config = { ranges: {} };
+  var queue = [];      // [{id, orderId, qty, type, timestamp, valid, reason}]
+  var syncing = false;
+
+  var cooldown = false;
+  var lastScanned = '';
+  var liveStream = null;
   var liveScanning = false;
-  var sessionCount = 0;
-  var pendingCount = 0;
-  var detector     = null;
-
-  var video   = document.getElementById('video');
-  var canvas  = document.getElementById('canvas');
-  var ctx     = canvas.getContext('2d');
-  var camWrap = document.getElementById('camera-wrap');
+  var video = document.getElementById('video');
+  var canvas = document.getElementById('canvas');
+  var ctx = canvas.getContext('2d');
+  var detector = null;
   var flashOverlay = document.getElementById('flash-overlay');
-
-  // Recently-queued dedupe: prevents the SAME qr code (held in frame for ~1-2s)
-  // from being added to the queue multiple times. This does NOT block scanning
-  // of a DIFFERENT code — that happens immediately.
-  var recentlyQueued = {}; // { orderId: timestamp }
-  var DEDUPE_WINDOW_MS = 3000;
-
-  // Daily counters are tracked per-mode
-  function todayKey(mode) { return 'omior_count_' + mode + '_' + new Date().toDateString(); }
-  function loadTodayCount() {
-    var v = parseInt(localStorage.getItem(todayKey(currentMode)) || '0');
-    document.getElementById('count-today').textContent = v;
-  }
-  function bumpTodayCount() {
-    var k = todayKey(currentMode);
-    var v = parseInt(localStorage.getItem(k) || '0') + 1;
-    localStorage.setItem(k, v);
-    document.getElementById('count-today').textContent = v;
-  }
 
   if ('BarcodeDetector' in window) {
     detector = new BarcodeDetector({ formats: ['qr_code'] });
   }
 
-  // ── MODE SWITCH ──
-  function switchMode(mode) {
-    currentMode = mode;
-    document.body.className = (mode === 'delivered') ? 'mode-delivered' : 'mode-ready';
-    document.getElementById('tab-ready').classList.toggle('active', mode === 'ready');
-    document.getElementById('tab-delivered').classList.toggle('active', mode === 'delivered');
-    document.getElementById('mode-label').textContent = mode === 'delivered' ? 'DELIVERED' : 'READY';
-    sessionCount = 0;
-    document.getElementById('count-session').textContent = 0;
-    document.getElementById('log').innerHTML = '';
-    loadTodayCount();
-    setStatus('', '');
-    document.getElementById('status-box').style.display = 'none';
+  // ---------- device id ----------
+  function getDeviceId() {
+    var id = localStorage.getItem('omior_device_id');
+    if (!id) {
+      id = 'dev-' + Math.random().toString(36).slice(2, 8) + '-' + Date.now().toString(36);
+      localStorage.setItem('omior_device_id', id);
+    }
+    return id;
   }
-  loadTodayCount();
+  var deviceId = getDeviceId();
 
-  // ── STATUS ──
+  // ---------- status ----------
   function setStatus(msg, type) {
     var el = document.getElementById('status-box');
     el.textContent = msg;
     el.className = type;
   }
 
-  function flashConfirm(orderId) {
+  // ---------- scan confirmation (flash + vibration) ----------
+  function flashConfirm(orderId, valid) {
     document.getElementById('flash-order').textContent = '#' + orderId;
-    flashOverlay.classList.add('show');
-    setTimeout(function() { flashOverlay.classList.remove('show'); }, 350);
+    flashOverlay.className = valid ? 'show' : 'show invalid';
+    if (navigator.vibrate) navigator.vibrate(valid ? 60 : [40, 60, 40]);
+    setTimeout(function () { flashOverlay.className = ''; }, 350);
   }
 
-  // ── QUEUE LOG UI ──
-  function addLogItem(orderId, queueId) {
-    sessionCount++;
-    document.getElementById('count-session').textContent = sessionCount;
-
-    var log = document.getElementById('log');
-    var item = document.createElement('div');
-    item.className = 'log-item pending';
-    item.id = 'log-' + queueId;
-    item.innerHTML =
-      '<span class="oid">#' + orderId + '</span>' +
-      '<span class="meta">' + new Date().toLocaleTimeString() +
-      '<br><span class="badge badge-pending" id="badge-' + queueId + '">Queued…</span></span>';
-    log.insertBefore(item, log.firstChild);
-  }
-
-  function updateLogItem(queueId, state, info) {
-    var item  = document.getElementById('log-' + queueId);
-    var badge = document.getElementById('badge-' + queueId);
-    if (!item || !badge) return;
-    if (state === 'done') {
-      item.className = 'log-item done';
-      badge.className = 'badge badge-done';
-      badge.textContent = '✓ Row ' + info;
-    } else if (state === 'failed') {
-      item.className = 'log-item failed';
-      badge.className = 'badge badge-error';
-      badge.innerHTML = '✗ Failed <span class="retry-link" onclick="retryItem(\'' + queueId + '\')">retry</span>';
-    }
-  }
-
-  // ── NON-BLOCKING QUEUE UPLOAD ──
-  // Each scan is queued and uploaded in the background. Scanning NEVER waits
-  // for the network response — the camera keeps reading new codes immediately.
-  var queueStore = {}; // queueId -> {orderId, mode}
-  var qCounter = 0;
-
-  function queueUpload(orderId) {
-    var mode = currentMode;
-    var now = Date.now();
-
-    // Dedupe: skip if this exact code was queued in the last few seconds
-    if (recentlyQueued[orderId] && (now - recentlyQueued[orderId]) < DEDUPE_WINDOW_MS) {
+  // ---------- config ----------
+  function loadConfig() {
+    if (WEB_APP_URL.indexOf('PASTE_YOUR') === 0) {
+      setStatus('Set WEB_APP_URL in the script before use.', 'error');
       return;
     }
-    recentlyQueued[orderId] = now;
-
-    // Instant feedback — does not wait for network
-    if (navigator.vibrate) navigator.vibrate(60);
-    flashConfirm(orderId);
-    bumpTodayCount();
-
-    var queueId = 'q' + (++qCounter);
-    queueStore[queueId] = { orderId: orderId, mode: mode };
-    addLogItem(orderId, queueId);
-
-    pendingCount++;
-    document.getElementById('count-pending').textContent = pendingCount;
-
-    sendToSheet(queueId);
-  }
-
-  function sendToSheet(queueId) {
-    var entry = queueStore[queueId];
-    if (!entry) return;
-
-    if (!GAS_URL || GAS_URL.indexOf('PASTE_YOUR') !== -1) {
-      updateLogItem(queueId, 'failed');
-      setStatus('⚠️ GAS URL not configured in index.html', 'error');
-      pendingCount = Math.max(0, pendingCount - 1);
-      document.getElementById('count-pending').textContent = pendingCount;
-      return;
-    }
-
-    fetch(GAS_URL + '?orderId=' + encodeURIComponent(entry.orderId) + '&type=' + entry.mode)
-      .then(function(r) { return r.json(); })
-      .then(function(res) {
-        pendingCount = Math.max(0, pendingCount - 1);
-        document.getElementById('count-pending').textContent = pendingCount;
-        if (res.success) {
-          updateLogItem(queueId, 'done', res.row);
+    fetch(WEB_APP_URL + '?action=config')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.success) {
+          config = data;
+          localStorage.setItem('omior_config_cache', JSON.stringify(data));
         } else {
-          updateLogItem(queueId, 'failed');
+          setStatus('Config error: ' + data.error, 'error');
         }
       })
-      .catch(function() {
-        pendingCount = Math.max(0, pendingCount - 1);
-        document.getElementById('count-pending').textContent = pendingCount;
-        updateLogItem(queueId, 'failed');
+      .catch(function () {
+        // fall back to last known config if offline
+        var cached = localStorage.getItem('omior_config_cache');
+        if (cached) config = JSON.parse(cached);
+        setStatus('Could not reach server — using cached ranges.', 'error');
       });
   }
 
-  function retryItem(queueId) {
-    var item  = document.getElementById('log-' + queueId);
-    var badge = document.getElementById('badge-' + queueId);
-    if (item) item.className = 'log-item pending';
-    if (badge) { badge.className = 'badge badge-pending'; badge.textContent = 'Retrying…'; }
-    pendingCount++;
-    document.getElementById('count-pending').textContent = pendingCount;
-    sendToSheet(queueId);
+  function validateLocally(orderId, type) {
+    var range = config.ranges && config.ranges[type];
+    if (!orderId) return { valid: false, reason: 'Empty order ID' };
+    if (!range) return { valid: true, reason: '' }; // no config yet — let server decide
+    var num = Number(orderId.replace(/[^0-9]/g, ''));
+    if (isNaN(num) || num < range.min || num > range.max) {
+      return { valid: false, reason: 'Out of range (' + range.min + '\u2013' + range.max + ')' };
+    }
+    return { valid: true, reason: '' };
   }
 
-  // ── LIVE CAMERA ── (scanning loop never pauses for uploads)
-  function startLive() {
-    if (!detector) {
-      setStatus('Live scan not supported here. Use Chrome on Android or Samsung Internet.', 'error');
+  // ---------- queue persistence ----------
+  function loadQueue() {
+    var saved = localStorage.getItem('omior_queue');
+    queue = saved ? JSON.parse(saved) : [];
+    renderQueue();
+  }
+  function saveQueue() {
+    localStorage.setItem('omior_queue', JSON.stringify(queue));
+  }
+
+  function renderQueue() {
+    var el = document.getElementById('queue');
+    el.innerHTML = '';
+    queue.forEach(function (item) {
+      var row = document.createElement('div');
+      row.className = 'q-item' + (item.valid ? '' : ' invalid');
+      row.innerHTML =
+        '<div class="q-info">' +
+          '<div class="q-oid">' + item.orderId + '</div>' +
+          '<div class="q-meta' + (item.valid ? '' : ' bad') + '">' + (item.valid ? 'looks valid' : item.reason) + '</div>' +
+        '</div>' +
+        '<input class="q-qty" type="number" min="1" value="' + item.qty + '" onchange="updateQty(\'' + item.id + '\', this.value)">' +
+        '<span class="q-del" onclick="removeItem(\'' + item.id + '\')">✕</span>';
+      el.appendChild(row);
+    });
+    document.getElementById('queue-count').textContent = queue.length + ' / ' + BATCH_LIMIT;
+    document.getElementById('sync-btn').disabled = queue.length === 0 || syncing;
+  }
+
+  function updateQty(id, val) {
+    var n = Number(val);
+    if (!n || n < 1) n = 1;
+    var item = queue.find(function (q) { return q.id === id; });
+    if (item) { item.qty = n; saveQueue(); }
+  }
+
+  function removeItem(id) {
+    queue = queue.filter(function (q) { return q.id !== id; });
+    saveQueue();
+    renderQueue();
+  }
+
+  function clearQueue() {
+    if (!queue.length) return;
+    if (!confirm('Clear all ' + queue.length + ' queued (unsynced) scans?')) return;
+    queue = [];
+    saveQueue();
+    renderQueue();
+  }
+
+  // ---------- add scan to queue ----------
+  function addToQueue(orderId) {
+    if (!orderId) return;
+    var check = validateLocally(orderId, mode);
+    var entry = {
+      id: 'q-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      orderId: orderId,
+      qty: 1,
+      type: mode,
+      timestamp: Date.now(),
+      valid: check.valid,
+      reason: check.reason
+    };
+    queue.push(entry);
+    saveQueue();
+    renderQueue();
+
+    // instant visual + haptic confirmation that the QR was read
+    flashConfirm(orderId, check.valid);
+
+    if (check.valid) {
+      setStatus('✓ Queued ' + orderId, 'success');
+    } else {
+      setStatus('✗ ' + orderId + ' — ' + check.reason, 'error');
+    }
+
+    if (queue.length >= BATCH_LIMIT) {
+      syncBatch();
+    }
+  }
+
+  // ---------- sync ----------
+  function addLog(text, ok) {
+    var log = document.getElementById('log');
+    var item = document.createElement('div');
+    item.className = 'log-item';
+    item.innerHTML = '<span class="oid" style="color:' + (ok ? '#6fcf6f' : '#cf6f6f') + '">' + text + '</span><span class="meta">' + new Date().toLocaleTimeString() + '</span>';
+    log.insertBefore(item, log.firstChild);
+  }
+
+  function syncBatch() {
+    if (syncing || !queue.length) return;
+    if (WEB_APP_URL.indexOf('PASTE_YOUR') === 0) {
+      setStatus('Set WEB_APP_URL in the script before syncing.', 'error');
       return;
     }
+    syncing = true;
+    renderQueue();
+    setStatus('Syncing ' + queue.length + ' scans...', 'loading');
+
+    var payload = { deviceId: deviceId, entries: queue };
+
+    fetch(WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight on Apps Script
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        syncing = false;
+        if (data.success) {
+          setStatus('✓ Synced ' + data.inserted + ' scans (rows starting ' + data.startRow + ')', 'success');
+          addLog('Synced ' + data.inserted + ' scans — device ' + deviceId, true);
+          queue = []; // whole batch accepted (valid + invalid both get logged server-side)
+          saveQueue();
+        } else {
+          setStatus('✗ Sync failed: ' + data.error, 'error');
+          addLog('Sync failed: ' + data.error, false);
+        }
+        renderQueue();
+      })
+      .catch(function (err) {
+        syncing = false;
+        setStatus('✗ Network error — will retry, scans kept locally.', 'error');
+        addLog('Network error, batch kept locally', false);
+        renderQueue();
+      });
+  }
+
+  // ---------- LIVE CAMERA ----------
+  function startLive() {
     setStatus('Starting camera...', 'loading');
     navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
     })
-    .then(function(stream) {
-      liveStream = stream;
-      video.srcObject = stream;
-      video.play();
-      camWrap.style.display = 'block';
-      document.getElementById('stop-btn').style.display  = 'block';
-      document.getElementById('start-btn').style.display = 'none';
-      document.getElementById('status-box').style.display = 'none';
-      liveScanning = true;
-      scanLoop();
-    })
-    .catch(function() {
-      setStatus('📷 Camera blocked.\n\nFix: tap 🔒 in address bar → Permissions → Allow Camera → reload.', 'error');
-    });
+      .then(function (stream) {
+        liveStream = stream;
+        video.srcObject = stream;
+        video.play();
+        document.getElementById('camera-wrap').style.display = 'block';
+        document.getElementById('stop-btn').style.display = 'block';
+        document.getElementById('status-box').style.display = 'none';
+        liveScanning = true;
+        if (detector) {
+          scanWithDetector();
+        } else {
+          setStatus('Native scanner not available. Use Take Photo instead.', 'error');
+        }
+      })
+      .catch(function () {
+        setStatus('Camera blocked by browser.\n\nFix: Open Chrome → tap lock icon in address bar → allow Camera → reload.', 'error');
+      });
   }
 
   function stopLive() {
     liveScanning = false;
-    if (liveStream) liveStream.getTracks().forEach(function(t) { t.stop(); });
-    camWrap.style.display = 'none';
-    document.getElementById('stop-btn').style.display  = 'none';
-    document.getElementById('start-btn').style.display = 'block';
+    if (liveStream) liveStream.getTracks().forEach(function (t) { t.stop(); });
+    document.getElementById('camera-wrap').style.display = 'none';
+    document.getElementById('stop-btn').style.display = 'none';
   }
 
-  function scanLoop() {
+  function scanWithDetector() {
     if (!liveScanning) return;
     detector.detect(video)
-      .then(function(codes) {
-        if (codes.length > 0) {
-          queueUpload(codes[0].rawValue); // non-blocking — fires and continues
-        }
-        setTimeout(scanLoop, 120); // next frame check almost immediately
+      .then(function (codes) {
+        if (codes.length > 0) handleScanValue(codes[0].rawValue);
+        setTimeout(scanWithDetector, 300);
       })
-      .catch(function() {
-        setTimeout(scanLoop, 200);
+      .catch(function () {
+        setTimeout(scanWithDetector, 300);
       });
   }
 
-  // ── PHOTO SCAN ──
+  function handleScanValue(orderId) {
+    if (!orderId || orderId === lastScanned || cooldown) return;
+    lastScanned = orderId;
+    cooldown = true;
+    setTimeout(function () { cooldown = false; lastScanned = ''; }, 1500);
+    addToQueue(orderId);
+  }
+
+  // ---------- PHOTO / TAKE PHOTO ----------
   function handleImage(event) {
     var file = event.target.files[0];
     if (!file) return;
-    if (!detector) {
-      setStatus('BarcodeDetector not supported. Try Chrome on Android.', 'error');
-      return;
-    }
     setStatus('Analysing image...', 'loading');
 
     var reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
       var img = new Image();
-      img.onload = function() {
-        detector.detect(img)
-          .then(function(codes) {
-            if (codes.length > 0) {
-              queueUpload(codes[0].rawValue);
-              setStatus('', ''); document.getElementById('status-box').style.display = 'none';
-            } else {
-              tryRotations(img, 0);
-            }
-          })
-          .catch(function(err) { setStatus('Detection error: ' + err.message, 'error'); });
+      img.onload = function () {
+        document.getElementById('preview').src = e.target.result;
+        document.getElementById('preview-wrap').style.display = 'block';
+
+        if (detector) {
+          detector.detect(img)
+            .then(function (codes) {
+              if (codes.length > 0) {
+                handleScanValue(codes[0].rawValue);
+              } else {
+                tryRotations(img, 0);
+              }
+            })
+            .catch(function (err) {
+              setStatus('Detection error: ' + err.message, 'error');
+            });
+        } else {
+          setStatus('BarcodeDetector not supported on this browser. Try Chrome on Android.', 'error');
+        }
         document.getElementById('qr-input').value = '';
       };
       img.src = e.target.result;
@@ -461,34 +467,42 @@
 
   function tryRotations(img, attempt) {
     if (attempt >= 4) {
-      setStatus('QR not found. Hold steady, ensure QR is clear and well-lit.', 'error');
+      setStatus('QR not found. Try again — hold phone steady, ensure QR is clear and well-lit.', 'error');
       return;
     }
     var angles = [90, 180, 270, 45];
-    var angle  = angles[attempt];
-    var rad    = angle * Math.PI / 180;
+    var angle = angles[attempt];
+    var rad = angle * Math.PI / 180;
+
     var w = (angle === 90 || angle === 270) ? img.height : img.width;
-    var h = (angle === 90 || angle === 270) ? img.width  : img.height;
-    canvas.width = w; canvas.height = h;
+    var h = (angle === 90 || angle === 270) ? img.width : img.height;
+
+    canvas.width = w;
+    canvas.height = h;
     ctx.save();
     ctx.translate(w / 2, h / 2);
     ctx.rotate(rad);
     ctx.drawImage(img, -img.width / 2, -img.height / 2);
     ctx.restore();
+
     var rotImg = new Image();
-    rotImg.onload = function() {
+    rotImg.onload = function () {
       detector.detect(rotImg)
-        .then(function(codes) {
+        .then(function (codes) {
           if (codes.length > 0) {
-            queueUpload(codes[0].rawValue);
+            handleScanValue(codes[0].rawValue);
           } else {
             tryRotations(img, attempt + 1);
           }
         })
-        .catch(function() { tryRotations(img, attempt + 1); });
+        .catch(function () { tryRotations(img, attempt + 1); });
     };
     rotImg.src = canvas.toDataURL();
   }
+
+  // ---------- init ----------
+  loadConfig();
+  loadQueue();
 </script>
 </body>
 </html>
