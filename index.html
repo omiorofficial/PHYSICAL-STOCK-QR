@@ -65,10 +65,11 @@
       display: flex; align-items: center; justify-content: center;
       transition: opacity 0.15s; z-index: 2;
     }
-    #flash-overlay.show { opacity: 0.85; }
-    #flash-overlay.invalid { background: #3a1a1a; }
-    #flash-overlay .ford { font-size: 26px; font-weight: 800; color: #6fcf6f; }
-    #flash-overlay.invalid .ford { color: #cf6f6f; }
+    #flash-overlay.show { opacity: 0.9; }
+    #flash-overlay.invalid { background: #3a1010; }
+    #flash-overlay .ford { font-size: 24px; font-weight: 800; color: #6fcf6f; text-align: center; padding: 0 16px; }
+    #flash-overlay.invalid .ford { color: #ff5f5f; }
+    #flash-overlay .fwarn { font-size: 13px; font-weight: 700; color: #ff5f5f; margin-top: 6px; letter-spacing: 0.5px; text-transform: uppercase; }
 
     #preview-wrap { width: 100%; margin-bottom: 10px; display: none; }
     #preview { width: 100%; border-radius: 12px; display: block; }
@@ -138,7 +139,12 @@
       <div id="scan-line"></div>
       <div class="corner-br"></div>
       <div class="corner-bl"></div>
-      <div id="flash-overlay"><div class="ford" id="flash-order">—</div></div>
+      <div id="flash-overlay">
+        <div>
+          <div class="ford" id="flash-order">—</div>
+          <div class="fwarn" id="flash-warn" style="display:none"></div>
+        </div>
+      </div>
     </div>
 
     <div id="preview-wrap"><img id="preview"></div>
@@ -207,11 +213,25 @@
   }
 
   // ---------- scan confirmation (flash + vibration) ----------
-  function flashConfirm(orderId, valid) {
+  var flashClearTimer = null;
+  function flashConfirm(orderId, valid, reason) {
+    var warnEl = document.getElementById('flash-warn');
     document.getElementById('flash-order').textContent = '#' + orderId;
+
+    if (valid) {
+      warnEl.style.display = 'none';
+      warnEl.textContent = '';
+    } else {
+      warnEl.style.display = 'block';
+      warnEl.textContent = '⚠ INVALID — ' + (reason || 'not accepted');
+    }
+
     flashOverlay.className = valid ? 'show' : 'show invalid';
-    if (navigator.vibrate) navigator.vibrate(valid ? 60 : [40, 60, 40]);
-    setTimeout(function () { flashOverlay.className = ''; }, 350);
+    if (navigator.vibrate) navigator.vibrate(valid ? 60 : [80, 80, 80, 80, 80]);
+
+    if (flashClearTimer) clearTimeout(flashClearTimer);
+    // invalid scans stay on screen noticeably longer so they don't get missed
+    flashClearTimer = setTimeout(function () { flashOverlay.className = ''; }, valid ? 350 : 1400);
   }
 
   // ---------- config ----------
@@ -317,7 +337,7 @@
     renderQueue();
 
     // instant visual + haptic confirmation that the QR was read
-    flashConfirm(orderId, check.valid);
+    flashConfirm(orderId, check.valid, check.reason);
 
     if (check.valid) {
       setStatus('✓ Queued ' + orderId, 'success');
